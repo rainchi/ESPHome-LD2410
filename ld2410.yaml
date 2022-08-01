@@ -1,0 +1,140 @@
+esphome:
+  name: ld2410
+  includes:
+    - ld2410_uart.h
+  on_boot:
+    priority: 600
+    # ...
+    then:
+      - lambda: |-
+          auto uart_component = static_cast<LD2410 *>(ld2410);
+          uart_component->setNumbers(maxMovingDistanceRange, maxStillDistanceRange, noneDuration);
+
+esp8266:
+  board: d1_mini
+
+logger:
+  baud_rate: 0
+
+api:
+
+ota:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  ap:
+    ssid: "LD2410 Fallback Hotspot"
+
+captive_portal:
+
+uart:
+  id: uart1
+  tx_pin: TX
+  rx_pin: RX
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
+  debug:
+    direction: BOTH
+    dummy_receiver: false
+    after:
+      delimiter: [0xF8,0xF7,0xF6,0xF5]
+      
+custom_component:
+  - lambda: |-
+      return {new LD2410(id(uart1))};
+    components:
+      - id: ld2410
+      
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      auto uart_component = static_cast<LD2410 *>(ld2410);
+      return {uart_component->hasTarget,uart_component->hasMovingTarget,uart_component->hasStillTarget,uart_component->lastCommandSuccess};
+    binary_sensors:
+      - name: "Has Target"
+      - name: "Has Moving Target"
+      - name: "Has Still Target"
+      - name: "Last Command Success"
+  
+sensor:
+  - platform: custom
+    lambda: |-
+      auto uart_component = static_cast<LD2410 *>(ld2410);
+      return {uart_component->movingTargetDistance,uart_component->movingTargetEnergy,uart_component->stillTargetDistance,uart_component->stillTargetEnergy,uart_component->detectDistance};
+    sensors:
+      - name: "Moving Target Distance"
+        unit_of_measurement: "cm"
+        accuracy_decimals: 0
+      - name: "Moving Target Energy"
+        unit_of_measurement: "%"
+        accuracy_decimals: 0
+      - name: "Still Target Distance"
+        unit_of_measurement: "cm"
+        accuracy_decimals: 0
+      - name: "Still Target Energy"
+        unit_of_measurement: "%"
+        accuracy_decimals: 0
+      - name: "Detect Distance"
+        unit_of_measurement: "cm"
+        accuracy_decimals: 0
+
+number:        
+  - platform: template
+    name: "Max Moving Distance Range"
+    id: maxMovingDistanceRange
+    min_value: 1
+    max_value: 8
+    step: 1
+    update_interval: never
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto uart_component = static_cast<LD2410 *>(ld2410);
+          uart_component->setMaxDistancesAndNoneDuration(x,id(maxStillDistanceRange).state,id(noneDuration).state);
+  - platform: template
+    name: "Max Still Distance Range"
+    id: maxStillDistanceRange
+    min_value: 1
+    max_value: 8
+    step: 1
+    update_interval: never
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto uart_component = static_cast<LD2410 *>(ld2410);
+          uart_component->setMaxDistancesAndNoneDuration(id(maxMovingDistanceRange).state,x,id(noneDuration).state);
+  - platform: template
+    name: "None Duration"
+    id: noneDuration
+    min_value: 0
+    max_value: 32767
+    step: 1
+    mode: box
+    update_interval: never
+    optimistic: true
+    set_action:
+      - lambda: |-
+          auto uart_component = static_cast<LD2410 *>(ld2410);
+          uart_component->setMaxDistancesAndNoneDuration(id(maxMovingDistanceRange).state,id(maxStillDistanceRange).state,x);
+      
+
+button:
+  - platform: template
+    name: "Reboot LD2410"
+    on_press:
+      lambda: 'static_cast<LD2410 *>(ld2410)->reboot();'
+  - platform: template
+    name: "Turn on config mode"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(true);'
+  - platform: template
+    name: "Turn off config mode"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setConfigMode(false);'
+  - platform: template
+    name: "Get config"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->queryParameters();'
