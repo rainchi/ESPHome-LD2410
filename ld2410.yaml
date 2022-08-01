@@ -33,7 +33,7 @@ uart:
   id: uart1
   tx_pin: TX
   rx_pin: RX
-  baud_rate: 256000
+  baud_rate: 256000 # Change this according to your setting
   parity: NONE
   stop_bits: 1
   debug:
@@ -138,3 +138,16 @@ button:
     name: "Get config"
     on_press:
       - lambda: 'static_cast<LD2410 *>(ld2410)->queryParameters();'
+  - platform: template
+    name: "Set baud rate to 256000"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(7);'
+  - platform: template
+    name: "Set baud rate to 115200"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(5);'
+  - platform: template
+    name: "Set baud rate to 9600"
+    on_press:
+      - lambda: 'static_cast<LD2410 *>(ld2410)->setBaudrate(1);'
+
